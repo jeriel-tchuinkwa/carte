@@ -31,12 +31,12 @@
             font-size: 12px;
             z-index: 1000;
         }
-        .dot { display: inline-block; width: 12px; height: 12px; 
+        .dot { display: inline-block; width: 12px; height: 12px;
                border-radius: 50%; margin-right: 5px; }
     </style>
 </head>
 <body>
-    <div id="info">📍 Chargement GPS...</div>
+    <div id="info">📍 Chargement...</div>
     <div id="legende">
         <b>Qualité de route</b><br>
         <span class="dot" style="background:#00cc00"></span>Bonne<br>
@@ -47,60 +47,42 @@
     <div id="map"></div>
 
     <script>
-        // Initialiser la carte centrée sur Trois-Rivières
         var map = L.map('map').setView([46.3460, -72.5754], 14);
 
-        // Tuiles OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
 
-        // Marqueur position actuelle
-        var positionMarker = L.circleMarker([46.3460, -72.5754], {
-            radius: 10,
-            color: '#0066ff',
-            fillColor: '#0066ff',
-            fillOpacity: 1
-        }).addTo(map).bindPopup("Vous êtes ici");
+        var firebaseURL = "https://speedy-e0d6b-default-rtdb.firebaseio.com/points.json";
 
-        // Données du CSV (exemple - sera remplacé par les vraies données)
-        var donnees = [
-            {lat: 46.345982, lon: -72.575066, mag: 0.9},
-            {lat: 46.346100, lon: -72.575200, mag: 1.6},
-            {lat: 46.346300, lon: -72.575400, mag: 2.1},
-            {lat: 46.346500, lon: -72.575600, mag: 0.8},
-            {lat: 46.346700, lon: -72.575800, mag: 3.2}
-        ];
-
-        // Fonction pour déterminer la couleur selon magnitude
         function getCouleur(mag) {
-            if (mag < 0.8) return '#00cc00';       // Bonne
-            if (mag < 1.5) return '#ffaa00';       // Moyenne
-            if (mag < 2.5) return '#ff4400';       // Mauvaise
-            return '#cc0000';                       // Très mauvaise
+            if (mag < 0.8) return '#00cc00';
+            if (mag < 1.5) return '#ffaa00';
+            if (mag < 2.5) return '#ff4400';
+            return '#cc0000';
         }
 
-        // Afficher les points sur la carte
-        donnees.forEach(function(d) {
-            L.circleMarker([d.lat, d.lon], {
-                radius: 8,
-                color: getCouleur(d.mag),
-                fillColor: getCouleur(d.mag),
-                fillOpacity: 0.8
-            }).addTo(map).bindPopup("Force: " + d.mag.toFixed(2) + "g");
-        });
-
-        // Géolocalisation en temps réel
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(function(pos) {
-                var lat = pos.coords.latitude;
-                var lon = pos.coords.longitude;
-                positionMarker.setLatLng([lat, lon]);
-                document.getElementById('info').innerHTML = 
-                    '📍 ' + lat.toFixed(5) + ', ' + lon.toFixed(5);
-            });
+        function chargerPoints() {
+            fetch(firebaseURL)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data) return;
+                    Object.values(data).forEach(function(d) {
+                        L.circleMarker([d.lat, d.lon], {
+                            radius: 8,
+                            color: getCouleur(d.mag),
+                            fillColor: getCouleur(d.mag),
+                            fillOpacity: 0.8
+                        }).addTo(map).bindPopup("Force: " + d.mag.toFixed(2) + "g");
+                    });
+                    document.getElementById('info').innerHTML = 
+                        '📍 ' + Object.keys(data).length + ' points chargés';
+                });
         }
+
+        chargerPoints();
+        setInterval(chargerPoints, 5000);
     </script>
 </body>
 </html>
