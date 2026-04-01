@@ -49,40 +49,71 @@
     <script>
         var map = L.map('map').setView([46.3460, -72.5754], 14);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+}).addTo(map);
 
-        var firebaseURL = "https://speedy-e0d6b-default-rtdb.firebaseio.com/points.json";
+var firebaseURL = "https://speedy-e0d6b-default-rtdb.firebaseio.com/points.json";
 
-        function getCouleur(mag) {
-            if (mag < 0.8) return '#00cc00';
-            if (mag < 1.5) return '#ffaa00';
-            if (mag < 2.5) return '#ff4400';
-            return '#cc0000';
-        }
+function getCouleur(mag) {
+    if (mag < 0.8) return '#00cc00';
+    if (mag < 1.5) return '#ffaa00';
+    if (mag < 2.5) return '#ff4400';
+    return '#cc0000';
+}
 
-        function chargerPoints() {
-            fetch(firebaseURL)
-                .then(r => r.json())
-                .then(data => {
-                    if (!data) return;
-                    Object.values(data).forEach(function(d) {
-                        L.circleMarker([d.lat, d.lon], {
-                            radius: 8,
-                            color: getCouleur(d.mag),
-                            fillColor: getCouleur(d.mag),
-                            fillOpacity: 0.8
-                        }).addTo(map).bindPopup("Force: " + d.mag.toFixed(2) + "g");
-                    });
-                    document.getElementById('info').innerHTML = 
-                        '📍 ' + Object.keys(data).length + ' points chargés';
-                });
-        }
+// Marqueur position actuelle (bleu)
+var positionMarker = L.circleMarker([46.3460, -72.5754], {
+    radius: 10,
+    color: '#0066ff',
+    fillColor: '#0066ff',
+    fillOpacity: 1
+}).addTo(map).bindPopup("Position actuelle");
 
-        chargerPoints();
-        setInterval(chargerPoints, 5000);
+var dernierePosition = null;
+
+function chargerPoints() {
+    fetch(firebaseURL)
+        .then(r => r.json())
+        .then(data => {
+            if (!data) return;
+            
+            var points = Object.values(data);
+            var count = points.length;
+            
+            // Afficher tous les points de qualité
+            points.forEach(function(d) {
+                L.circleMarker([d.lat, d.lon], {
+                    radius: 8,
+                    color: getCouleur(d.mag),
+                    fillColor: getCouleur(d.mag),
+                    fillOpacity: 0.8
+                }).addTo(map).bindPopup("Force: " + d.mag.toFixed(2) + "g");
+            });
+            
+            // Déplacer le marqueur bleu sur le dernier point
+            var dernierPoint = points[count - 1];
+            if (dernierPoint) {
+                var newPos = [dernierPoint.lat, dernierPoint.lon];
+                positionMarker.setLatLng(newPos);
+                
+                // Centrer la carte si position a changé
+                if (!dernierePosition || 
+                    dernierePosition[0] !== newPos[0] || 
+                    dernierePosition[1] !== newPos[1]) {
+                    map.setView(newPos, 16);
+                    dernierePosition = newPos;
+                }
+            }
+            
+            document.getElementById('info').innerHTML = 
+                '📍 ' + count + ' points enregistrés';
+        });
+}
+
+chargerPoints();
+setInterval(chargerPoints, 3000);
     </script>
 </body>
 </html>
