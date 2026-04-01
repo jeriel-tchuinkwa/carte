@@ -3,9 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mipmip - Qualité Route</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <title>Speedy - Qualité Route</title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet">
     <style>
         body { margin: 0; padding: 0; }
         #map { width: 100vw; height: 100vh; }
@@ -47,73 +47,73 @@
     <div id="map"></div>
 
     <script>
-        var map = L.map('map').setView([46.3460, -72.5754], 14);
+        mapboxgl.accessToken = 'pk.eyJ1IjoiamVib3giLCJhIjoiY21tbmhrd3AxMDM1bTJzcHY0NmI2d2hiZiJ9.IXBfzH6eF2wVu9rTdk5XxA';
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 19
-}).addTo(map);
-
-var firebaseURL = "https://speedy-e0d6b-default-rtdb.firebaseio.com/points.json";
-
-function getCouleur(mag) {
-    if (mag < 0.8) return '#00cc00';
-    if (mag < 1.5) return '#ffaa00';
-    if (mag < 2.5) return '#ff4400';
-    return '#cc0000';
-}
-
-// Marqueur position actuelle (bleu)
-var positionMarker = L.circleMarker([46.3460, -72.5754], {
-    radius: 10,
-    color: '#0066ff',
-    fillColor: '#0066ff',
-    fillOpacity: 1
-}).addTo(map).bindPopup("Position actuelle");
-
-var dernierePosition = null;
-
-function chargerPoints() {
-    fetch(firebaseURL)
-        .then(r => r.json())
-        .then(data => {
-            if (!data) return;
-            
-            var points = Object.values(data);
-            var count = points.length;
-            
-            // Afficher tous les points de qualité
-            points.forEach(function(d) {
-                L.circleMarker([d.lat, d.lon], {
-                    radius: 8,
-                    color: getCouleur(d.mag),
-                    fillColor: getCouleur(d.mag),
-                    fillOpacity: 0.8
-                }).addTo(map).bindPopup("Force: " + d.mag.toFixed(2) + "g");
-            });
-            
-            // Déplacer le marqueur bleu sur le dernier point
-            var dernierPoint = points[count - 1];
-            if (dernierPoint) {
-                var newPos = [dernierPoint.lat, dernierPoint.lon];
-                positionMarker.setLatLng(newPos);
-                
-                // Centrer la carte si position a changé
-                if (!dernierePosition || 
-                    dernierePosition[0] !== newPos[0] || 
-                    dernierePosition[1] !== newPos[1]) {
-                    map.setView(newPos, 16);
-                    dernierePosition = newPos;
-                }
-            }
-            
-            document.getElementById('info').innerHTML = 
-                '📍 ' + count + ' points enregistrés';
+        var map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [-72.5754, 46.3460],
+            zoom: 14
         });
-}
 
-chargerPoints();
-setInterval(chargerPoints, 3000);
+        // Contrôles de navigation
+        map.addControl(new mapboxgl.NavigationControl());
+
+        // GPS position actuelle
+        map.addControl(new mapboxgl.GeolocateControl({
+            positionOptions: { enableHighAccuracy: true },
+            trackUserLocation: true,
+            showUserHeading: true
+        }));
+
+        var firebaseURL = "https://speedy-e0d6b-default-rtdb.firebaseio.com/points.json";
+
+        function getCouleur(mag) {
+            if (mag < 0.8) return '#00cc00';
+            if (mag < 1.5) return '#ffaa00';
+            if (mag < 2.5) return '#ff4400';
+            return '#cc0000';
+        }
+
+        var markeurs = [];
+
+        function chargerPoints() {
+            fetch(firebaseURL)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data) return;
+                    var points = Object.values(data);
+
+                    // Supprimer anciens marqueurs
+                    markeurs.forEach(m => m.remove());
+                    markeurs = [];
+
+                    points.forEach(function(d) {
+                        if (!d.lat || !d.lon) return;
+                        var el = document.createElement('div');
+                        el.style.width = '16px';
+                        el.style.height = '16px';
+                        el.style.borderRadius = '50%';
+                        el.style.backgroundColor = getCouleur(d.mag);
+                        el.style.border = '2px solid white';
+
+                        var marker = new mapboxgl.Marker(el)
+                            .setLngLat([d.lon, d.lat])
+                            .setPopup(new mapboxgl.Popup().setText('Force: ' + d.mag.toFixed(2) + 'g'))
+                            .addTo(map);
+
+                        markeurs.push(marker);
+                    });
+
+                    document.getElementById('info').innerHTML =
+                        '📍 ' + points.length + ' points enregistrés';
+                });
+        }
+
+        map.on('load', function() {
+            chargerPoints();
+            setInterval(chargerPoints, 3000);
+        });
     </script>
 </body>
 </html>
