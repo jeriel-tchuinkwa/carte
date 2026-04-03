@@ -72,18 +72,23 @@
                     markeurs = [];
                     var points = Object.values(data);
                     points.forEach(function(d) {
-                        if (!d.lat || !d.lon) return;
-                        var marker = L.circleMarker([d.lat, d.lon], {
-                            radius: 8,
-                            color: getCouleur(d.mag),
-                            fillColor: getCouleur(d.mag),
-                            fillOpacity: 0.8
-                        }).addTo(map).bindPopup("Force: " + d.mag.toFixed(2) + "g");
+                        var lat = parseFloat(d.lat);
+                        var lon = parseFloat(d.lon);
+                        var mag = parseFloat(d.mag);
+                        if (isNaN(lat) || isNaN(lon)) return;
+                        var marker = L.circleMarker([lat, lon], {
+                            radius: 10,
+                            color: getCouleur(mag),
+                            fillColor: getCouleur(mag),
+                            fillOpacity: 0.9,
+                            weight: 2
+                        }).addTo(map).bindPopup("Force: " + mag.toFixed(2) + "g");
                         markeurs.push(marker);
                     });
                     document.getElementById('info').innerHTML =
                         '📍 ' + points.length + ' points enregistrés';
-                });
+                })
+                .catch(err => console.log('Erreur:', err));
         }
 
         chargerPoints();
