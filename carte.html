@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Speedy - Qualité Route</title>
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         body { margin: 0; padding: 0; }
         #map { width: 100vw; height: 100vh; }
@@ -45,26 +45,12 @@
         <span class="dot" style="background:#cc0000"></span>Très mauvaise
     </div>
     <div id="map"></div>
-
     <script>
-        mapboxgl.accessToken = 'pk.eyJ1IjoiamVib3giLCJhIjoiY21tbmhrd3AxMDM1bTJzcHY0NmI2d2hiZiJ9.IXBfzH6eF2wVu9rTdk5XxA';
-
-        var map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/streets-v12',
-            center: [-72.5754, 46.3460],
-            zoom: 14
-        });
-
-        // Contrôles de navigation
-        map.addControl(new mapboxgl.NavigationControl());
-
-        // GPS position actuelle
-        map.addControl(new mapboxgl.GeolocateControl({
-            positionOptions: { enableHighAccuracy: true },
-            trackUserLocation: true,
-            showUserHeading: true
-        }));
+        var map = L.map('map').setView([46.3460, -72.5754], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap',
+            maxZoom: 19
+        }).addTo(map);
 
         var firebaseURL = "https://speedy-e0d6b-default-rtdb.firebaseio.com/points.json";
 
@@ -82,38 +68,26 @@
                 .then(r => r.json())
                 .then(data => {
                     if (!data) return;
-                    var points = Object.values(data);
-
-                    // Supprimer anciens marqueurs
                     markeurs.forEach(m => m.remove());
                     markeurs = [];
-
+                    var points = Object.values(data);
                     points.forEach(function(d) {
                         if (!d.lat || !d.lon) return;
-                        var el = document.createElement('div');
-                        el.style.width = '16px';
-                        el.style.height = '16px';
-                        el.style.borderRadius = '50%';
-                        el.style.backgroundColor = getCouleur(d.mag);
-                        el.style.border = '2px solid white';
-
-                        var marker = new mapboxgl.Marker(el)
-                            .setLngLat([d.lon, d.lat])
-                            .setPopup(new mapboxgl.Popup().setText('Force: ' + d.mag.toFixed(2) + 'g'))
-                            .addTo(map);
-
+                        var marker = L.circleMarker([d.lat, d.lon], {
+                            radius: 8,
+                            color: getCouleur(d.mag),
+                            fillColor: getCouleur(d.mag),
+                            fillOpacity: 0.8
+                        }).addTo(map).bindPopup("Force: " + d.mag.toFixed(2) + "g");
                         markeurs.push(marker);
                     });
-
                     document.getElementById('info').innerHTML =
                         '📍 ' + points.length + ' points enregistrés';
                 });
         }
 
-        map.on('load', function() {
-            chargerPoints();
-            setInterval(chargerPoints, 3000);
-        });
+        chargerPoints();
+        setInterval(chargerPoints, 3000);
     </script>
 </body>
 </html>
