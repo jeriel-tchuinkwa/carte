@@ -51,18 +51,14 @@
             attribution: '© OpenStreetMap',
             maxZoom: 19
         }).addTo(map);
-
         var firebaseURL = "https://speedy-e0d6b-default-rtdb.firebaseio.com/points.json";
-
         function getCouleur(mag) {
             if (mag < 0.8) return '#00cc00';
             if (mag < 1.5) return '#ffaa00';
             if (mag < 2.5) return '#ff4400';
             return '#cc0000';
         }
-
         var markeurs = [];
-
         function chargerPoints() {
             fetch(firebaseURL)
                 .then(r => r.json())
@@ -76,8 +72,8 @@
                         var lon = parseFloat(d.lon);
                         var mag = parseFloat(d.mag);
                         if (isNaN(lat) || isNaN(lon)) return;
-                        var marker = L.circleMarker([lat, lon], {
-                            radius: 10,
+                        var marker = L.circle([lat, lon], {
+                            radius: 30,
                             color: getCouleur(mag),
                             fillColor: getCouleur(mag),
                             fillOpacity: 0.9,
@@ -90,7 +86,6 @@
                 })
                 .catch(err => console.log('Erreur:', err));
         }
-
         chargerPoints();
         setInterval(chargerPoints, 3000);
     </script>
