@@ -54,31 +54,42 @@
 
         var firebaseURL = "https://speedy-e0d6b-default-rtdb.firebaseio.com";
         var positionActuelle = null;
-        var derniereMAG = 1.0;
+        var derniereAccelero = {mag: 1.0, vibration: 0.0};
 
-        function getCouleur(mag) {
-            if (mag < 0.8) return '#00cc00';
-            if (mag < 1.5) return '#ffaa00';
-            if (mag < 2.5) return '#ff4400';
+        function getCouleur(vibration) {
+            if (vibration < 0.2) return '#00cc00';
+            if (vibration < 0.5) return '#ffaa00';
+            if (vibration < 1.0) return '#ff4400';
             return '#cc0000';
         }
 
         var markeurs = [];
 
-        // Lire la dernière magnitude depuis Firebase
-        function lireMagnitude() {
-            fetch(firebaseURL + '/magnitude.json')
+        // Lire les dernières données accéléromètre depuis Firebase
+        function lireAccelero() {
+            fetch(firebaseURL + '/accelero.json')
                 .then(r => r.json())
                 .then(data => {
-                    if (data && data.mag) {
-                        derniereMAG = parseFloat(data.mag);
+                    if (!data) return;
+                    // Prendre le dernier enregistrement
+                    var keys = Object.keys(data);
+                    var dernierKey = keys[keys.length - 1];
+                    var dernierData = data[dernierKey];
+                    if (dernierData) {
+                        derniereAccelero.mag = parseFloat(dernierData.mag) || 1.0;
+                        derniereAccelero.vibration = parseFloat(dernierData.vibration) || 0.0;
                     }
                 }).catch(e => {});
         }
 
-        // Envoyer position + magnitude à Firebase
-        function envoyerPoint(lat, lon, mag) {
-            var data = JSON.stringify({lat: lat, lon: lon, mag: mag});
+        // Envoyer point combiné GPS + accéléromètre
+        function envoyerPoint(lat, lon) {
+            var data = JSON.stringify({
+                lat: lat,
+                lon: lon,
+                mag: derniereAccelero.mag,
+                vibration: derniereAccelero.vibration
+            });
             fetch(firebaseURL + '/points.json', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -98,15 +109,19 @@
                     points.forEach(function(d) {
                         var lat = parseFloat(d.lat);
                         var lon = parseFloat(d.lon);
-                        var mag = parseFloat(d.mag);
+                        var vibration = parseFloat(d.vibration) || 0;
+                        var mag = parseFloat(d.mag) || 1;
                         if (isNaN(lat) || isNaN(lon)) return;
                         var marker = L.circle([lat, lon], {
                             radius: 30,
-                            color: getCouleur(mag),
-                            fillColor: getCouleur(mag),
+                            color: getCouleur(vibration),
+                            fillColor: getCouleur(vibration),
                             fillOpacity: 0.9,
                             weight: 2
-                        }).addTo(map).bindPopup("Force: " + mag.toFixed(2) + "g");
+                        }).addTo(map).bindPopup(
+                            "Force: " + mag.toFixed(2) + "g<br>" +
+                            "Vibration: " + vibration.toFixed(3)
+                        );
                         markeurs.push(marker);
                     });
                     document.getElementById('info').innerHTML =
@@ -121,8 +136,6 @@
                 var lon = pos.coords.longitude;
                 positionActuelle = {lat: lat, lon: lon};
                 map.setView([lat, lon], 16);
-                document.getElementById('info').innerHTML =
-                    '📍 ' + lat.toFixed(5) + ', ' + lon.toFixed(5);
             }, function(err) {
                 document.getElementById('info').innerHTML = 'GPS: ' + err.message;
             }, {enableHighAccuracy: true});
@@ -130,9 +143,9 @@
 
         // Envoyer un point toutes les 2 secondes
         setInterval(function() {
-            lireMagnitude();
+            lireAccelero();
             if (positionActuelle) {
-                envoyerPoint(positionActuelle.lat, positionActuelle.lon, derniereMAG);
+                envoyerPoint(positionActuelle.lat, positionActuelle.lon);
                 chargerPoints();
             }
         }, 2000);
